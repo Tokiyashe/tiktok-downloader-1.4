@@ -117,9 +117,13 @@ async def download_video(url: str = Form(...)):
         )
 
 @app.post("/download/photos")
-async def download_photos(image_urls: List[str] = Form(...)):
-    """Скачивает выбранные фото и отдаёт ZIP-архивом"""
+async def download_photos(image_urls: List[str] = Form(...), download_type: str = Form(...)):
+    """
+    Скачивает выбранные фото
+    download_type: 'single' - по одному, 'zip' - архивом
+    """
     try:
+        # Скачиваем выбранные фото
         photo_paths = await photo_downloader.download_selected_photos(image_urls)
         
         if not photo_paths:
@@ -128,24 +132,73 @@ async def download_photos(image_urls: List[str] = Form(...)):
                 content={"error": "Не удалось скачать фото"}
             )
         
-        zip_filename = f"tiktok_photos_{uuid.uuid4()}.zip"
-        zip_path = os.path.join("downloads/photos", zip_filename)
+        # Если выбран режим ZIP
+        if download_type == 'zip':
+            zip_filename = f"tiktok_photos_{uuid.uuid4()}.zip"
+            zip_path = os.path.join("downloads/photos", zip_filename)
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                for file_path in photo_paths:
+                    zipf.write(file_path, os.path.basename(file_path))
+            
+            return FileResponse(
+                path=zip_path,
+                media_type="application/zip",
+                filename="tiktok_photos.zip"
+            )
         
-        with zipfile.ZipFile(zip_path, 'w') as zipf:
-            for file_path in photo_paths:
-                zipf.write(file_path, os.path.basename(file_path))
-        
-        return FileResponse(
-            path=zip_path,
-            media_type="application/zip",
-            filename="tiktok_photos.zip"
-        )
+        # Если выбран режим "по одному"
+        else:
+            # Если одно фото - отдаём его напрямую
+            if len(photo_paths) == 1:
+                filename = os.path.basename(photo_paths[0])
+                return FileResponse(
+                    path=photo_paths[0],
+                    media_type="image/jpeg",
+                    filename=filename
+                )
+            
+            # Если несколько - возвращаем список файлов
+            file_list = []
+            for i, path in enumerate(photo_paths):
+                filename = os.path.basename(path)
+                # Копируем файл с понятным именем
+                new_filename = f"tiktok_photo_{i+1}.jpg"
+                new_path = os.path.join("downloads/photos", new_filename)
+                shutil.copy2(path, new_path)
+                file_list.append({
+                    'filename': new_filename,
+                    'url': f'/files/{new_filename}',
+                    'original': filename
+                })
+            
+            return {
+                'type': 'multiple',
+                'files': file_list,
+                'count': len(file_list)
+            }
         
     except Exception as e:
         return JSONResponse(
             status_code=400,
             content={"error": str(e)}
         )
+
+# Эндпоинт для скачивания отдельных файлов
+@app.get("/files/{filename}")
+async def get_file(filename: str):
+    """Отдаёт файл по имени"""
+    file_path = os.path.join("downloads/photos", filename)
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path,
+            media_type="image/jpeg",
+            filename=filename
+        )
+    return JSONResponse(
+        status_code=404,
+        content={"error": "Файл не найден"}
+    )
 
 @app.on_event("startup")
 async def startup():
