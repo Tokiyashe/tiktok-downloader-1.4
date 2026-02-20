@@ -44,11 +44,8 @@
             margin-bottom: 20px;
             font-size: clamp(13px, 3.5vw, 15px);
             text-align: center;
-            line-height: 1.4;
-            padding: 0 10px;
         }
         
-        /* Вкладки */
         .tabs {
             display: flex;
             gap: 8px;
@@ -69,7 +66,6 @@
             cursor: pointer;
             transition: all 0.2s;
             color: #666;
-            touch-action: manipulation;
         }
         
         .tab-btn.active {
@@ -95,7 +91,6 @@
         
         .input-group {
             margin-bottom: 20px;
-            position: relative;
         }
         
         input {
@@ -106,20 +101,12 @@
             font-size: 16px;
             transition: all 0.3s;
             background: #f8f8f8;
-            -webkit-appearance: none;
-            appearance: none;
         }
         
         input:focus {
             outline: none;
             border-color: #ff0050;
             background: white;
-            box-shadow: 0 0 0 3px rgba(255,0,80,0.1);
-        }
-        
-        input::placeholder {
-            color: #999;
-            font-size: 14px;
         }
         
         button {
@@ -133,10 +120,6 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: manipulation;
             box-shadow: 0 4px 12px rgba(255,0,80,0.3);
             margin-bottom: 10px;
         }
@@ -144,7 +127,6 @@
         button:active {
             transform: scale(0.98);
             background: #e00045;
-            box-shadow: 0 2px 6px rgba(255,0,80,0.4);
         }
         
         button:disabled {
@@ -189,25 +171,9 @@
             border-radius: 12px;
             font-size: 14px;
             display: none;
-            border-left: 4px solid #d32f2f;
         }
         
         .error.active {
-            display: block;
-        }
-        
-        .info-message {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            margin-top: 15px;
-            border-left: 4px solid #1976d2;
-            display: none;
-        }
-        
-        .info-message.active {
             display: block;
         }
         
@@ -218,35 +184,6 @@
             margin-top: 10px;
             display: inline-block;
         }
-        
-        @media (max-width: 380px) {
-            .container {
-                padding: 20px 15px;
-            }
-            
-            .tab-btn {
-                font-size: 14px;
-                padding: 10px 5px;
-            }
-            
-            input {
-                padding: 14px;
-                font-size: 15px;
-            }
-            
-            button {
-                padding: 14px;
-                font-size: 17px;
-            }
-        }
-        
-        /* Для безопасной зоны на iPhone */
-        @supports (padding: max(0px)) {
-            .container {
-                padding-left: max(20px, env(safe-area-inset-left));
-                padding-right: max(20px, env(safe-area-inset-right));
-            }
-        }
     </style>
 </head>
 <body>
@@ -254,7 +191,6 @@
         <h1>🎥 TikTok Downloader</h1>
         <p class="subtitle">Скачай видео или фото без водяного знака</p>
         
-        <!-- Вкладки -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('video')">🎬 Видео</button>
             <button class="tab-btn" onclick="switchTab('photo')">📸 Фото</button>
@@ -269,14 +205,10 @@
                 <input type="url" 
                        id="videoUrlInput" 
                        placeholder="https://www.tiktok.com/@user/video/..." 
-                       autocomplete="off"
-                       autocapitalize="none"
-                       autocorrect="off"
-                       spellcheck="false"
-                       enterkeyhint="go">
+                       autocomplete="off">
             </div>
             <button id="videoDownloadBtn" onclick="downloadVideo()">Скачать видео</button>
-            <a href="#" class="example-link" onclick="setExampleVideo(event)">📋 Пример: вставить тестовую ссылку</a>
+            <a href="#" class="example-link" onclick="setExampleVideo(event)">📋 Пример ссылки на видео</a>
         </div>
         
         <!-- Вкладка Фото -->
@@ -288,47 +220,35 @@
                 <input type="url" 
                        id="photoUrlInput" 
                        placeholder="https://www.tiktok.com/@user/photo/..." 
-                       autocomplete="off"
-                       autocapitalize="none"
-                       autocorrect="off"
-                       spellcheck="false"
-                       enterkeyhint="go">
+                       autocomplete="off">
             </div>
-            <button id="photoDownloadBtn" onclick="downloadPhotos()">Получить фото</button>
-            <a href="#" class="example-link" onclick="setExamplePhoto(event)">📋 Пример: вставить тестовую ссылку</a>
+            <button id="photoDownloadBtn" onclick="analyzePhotos()">Получить фото</button>
+            <a href="#" class="example-link" onclick="setExamplePhoto(event)">📋 Пример ссылки на фото</a>
         </div>
         
-        <!-- Общие элементы для загрузки и ошибок -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p id="loadingText">Обрабатываем запрос...</p>
         </div>
         
         <div class="error" id="error"></div>
-        <div class="info-message" id="infoMessage"></div>
     </div>
 
     <script>
         let currentTab = 'video';
         
-        // Переключение вкладок
         function switchTab(tab) {
             currentTab = tab;
             
-            // Обновляем кнопки вкладок
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             
-            // Обновляем контент
             document.getElementById('videoTab').classList.toggle('active', tab === 'video');
             document.getElementById('photoTab').classList.toggle('active', tab === 'photo');
             
-            // Очищаем сообщения
             hideError();
-            hideInfo();
         }
         
-        // Примеры ссылок
         function setExampleVideo(e) {
             e.preventDefault();
             document.getElementById('videoUrlInput').value = 'https://www.tiktok.com/@therock/video/7123456789012345678';
@@ -339,7 +259,6 @@
             document.getElementById('photoUrlInput').value = 'https://www.tiktok.com/@user/photo/7123456789012345678';
         }
         
-        // Скачивание видео
         async function downloadVideo() {
             const url = document.getElementById('videoUrlInput').value.trim();
             
@@ -353,11 +272,10 @@
                 return;
             }
             
-            await processRequest(url, 'video');
+            await processVideoRequest(url);
         }
         
-        // Получение фото
-        async function downloadPhotos() {
+        async function analyzePhotos() {
             const url = document.getElementById('photoUrlInput').value.trim();
             
             if (!url) {
@@ -366,99 +284,90 @@
             }
             
             if (!url.includes('tiktok.com') || !url.includes('/photo/')) {
-                showError('Это не похоже на ссылку на фото TikTok. Нужна ссылка с /photo/');
+                showError('Это не похоже на ссылку на фото TikTok');
                 return;
             }
             
-            await processRequest(url, 'photo');
-        }
-        
-        // Общая функция обработки запросов
-        async function processRequest(url, type) {
             const loading = document.getElementById('loading');
             const loadingText = document.getElementById('loadingText');
-            const downloadBtn = type === 'video' ? 
-                document.getElementById('videoDownloadBtn') : 
-                document.getElementById('photoDownloadBtn');
+            const downloadBtn = document.getElementById('photoDownloadBtn');
             
             loading.classList.add('active');
             downloadBtn.disabled = true;
             hideError();
-            hideInfo();
             
-            loadingText.textContent = type === 'video' ? 
-                'Скачиваем видео...' : 
-                'Получаем фото...';
+            loadingText.textContent = 'Анализируем фото...';
             
             try {
                 const formData = new FormData();
                 formData.append('url', url);
                 
-                const endpoint = type === 'video' ? '/download/video' : '/download/photos';
-                
-                const response = await fetch(endpoint, {
+                const response = await fetch('/analyze/photos', {
                     method: 'POST',
                     body: formData
                 });
                 
-                if (response.ok) {
-                    if (type === 'video') {
-                        // Скачиваем видео
-                        const blob = await response.blob();
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = 'tiktok_video.mp4';
-                        a.style.display = 'none';
-                        
-                        // Для мобильных устройств
-                        if (navigator.userAgent.match(/Android|iPhone|iPad|iPod/i)) {
-                            a.target = '_blank';
-                        }
-                        
-                        document.body.appendChild(a);
-                        a.click();
-                        
-                        setTimeout(() => {
-                            document.body.removeChild(a);
-                            window.URL.revokeObjectURL(downloadUrl);
-                        }, 100);
-                        
-                        showInfo('✅ Видео успешно скачано!');
-                    } else {
-                        // Получаем ZIP с фото
-                        const blob = await response.blob();
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = 'tiktok_photos.zip';
-                        a.style.display = 'none';
-                        
-                        document.body.appendChild(a);
-                        a.click();
-                        
-                        setTimeout(() => {
-                            document.body.removeChild(a);
-                            window.URL.revokeObjectURL(downloadUrl);
-                        }, 100);
-                        
-                        showInfo('✅ Фото успешно скачаны!');
-                    }
-                } else {
-                    const data = await response.json();
-                    showError(data.error || 'Ошибка при скачивании');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
                 }
                 
+                sessionStorage.setItem('tiktokPhotos', JSON.stringify(data));
+                window.location.href = '/photos';
+                
             } catch (err) {
-                showError('Ошибка соединения. Попробуй еще раз.');
-                console.error(err);
+                showError('Ошибка при анализе ссылки');
             } finally {
                 loading.classList.remove('active');
                 downloadBtn.disabled = false;
             }
         }
         
-        // Вспомогательные функции
+        async function processVideoRequest(url) {
+            const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
+            const downloadBtn = document.getElementById('videoDownloadBtn');
+            
+            loading.classList.add('active');
+            downloadBtn.disabled = true;
+            hideError();
+            
+            loadingText.textContent = 'Скачиваем видео...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                
+                const response = await fetch('/download/video', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'tiktok_video.mp4';
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    
+                    showSuccess('✅ Видео скачано!');
+                } else {
+                    const data = await response.json();
+                    showError(data.error || 'Ошибка скачивания');
+                }
+                
+            } catch (err) {
+                showError('Ошибка при скачивании');
+            } finally {
+                loading.classList.remove('active');
+                downloadBtn.disabled = false;
+            }
+        }
+        
         function showError(message) {
             const error = document.getElementById('error');
             error.textContent = '❌ ' + message;
@@ -469,25 +378,25 @@
             }, 5000);
         }
         
+        function showSuccess(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.color = '#4caf50';
+            error.style.background = '#e8f5e8';
+            error.classList.add('active');
+            
+            setTimeout(() => {
+                error.classList.remove('active');
+                error.style.color = '#d32f2f';
+                error.style.background = '#ffebee';
+            }, 3000);
+        }
+        
         function hideError() {
             document.getElementById('error').classList.remove('active');
         }
         
-        function showInfo(message) {
-            const info = document.getElementById('infoMessage');
-            info.textContent = message;
-            info.classList.add('active');
-            
-            setTimeout(() => {
-                info.classList.remove('active');
-            }, 3000);
-        }
-        
-        function hideInfo() {
-            document.getElementById('infoMessage').classList.remove('active');
-        }
-        
-        // Обработка Enter
+        // Enter для отправки
         document.getElementById('videoUrlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -498,15 +407,8 @@
         document.getElementById('photoUrlInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                downloadPhotos();
+                analyzePhotos();
             }
-        });
-        
-        // Предотвращаем случайное масштабирование при двойном тапе
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-            }, { passive: false });
         });
     </script>
 </body>
