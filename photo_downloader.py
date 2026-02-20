@@ -4,9 +4,8 @@ import asyncio
 import httpx
 import aiofiles
 import subprocess
-import json
 import re
-from typing import List, Dict, Union, Optional
+from typing import List
 
 PHOTOS_FOLDER = "downloads/photos"
 os.makedirs(PHOTOS_FOLDER, exist_ok=True)
@@ -38,7 +37,7 @@ async def get_photo_urls(url: str) -> List[str]:
     
     photo_urls = []
     
-    # Способ 1: через gallery-dl (если установлен)
+    # Способ 1: через gallery-dl
     try:
         cmd = [
             'gallery-dl',
@@ -63,7 +62,7 @@ async def get_photo_urls(url: str) -> List[str]:
     except:
         pass
     
-    # Способ 2: парсинг HTML страницы
+    # Способ 2: парсинг HTML
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
             response = await client.get(url, headers={
@@ -71,7 +70,6 @@ async def get_photo_urls(url: str) -> List[str]:
             })
             html = response.text
             
-            # Ищем все возможные URL изображений
             patterns = [
                 r'https?://[^\s"\']+\.(?:jpg|jpeg|png|webp)[^\s"\']*',
                 r'content="(https?://[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
@@ -83,12 +81,11 @@ async def get_photo_urls(url: str) -> List[str]:
                 matches = re.findall(pattern, html, re.IGNORECASE)
                 photo_urls.extend(matches)
             
-            # Убираем дубликаты и фильтруем
             photo_urls = list(set(photo_urls))
             photo_urls = [u for u in photo_urls if 'avatar' not in u and 'logo' not in u]
             
             if photo_urls:
-                return photo_urls[:20]  # максимум 20 фото
+                return photo_urls[:20]
     except Exception as e:
         print(f"Ошибка парсинга HTML: {e}")
     
@@ -102,7 +99,7 @@ async def download_selected_photos(image_urls: List[str]) -> List[str]:
     
     for i, img_url in enumerate(image_urls):
         try:
-            # Определяем расширение из URL или ставим .jpg
+            # Определяем расширение
             ext_match = re.search(r'\.(jpg|jpeg|png|webp)', img_url.lower())
             ext = ext_match.group(1) if ext_match else 'jpg'
             if ext == 'jpeg':
@@ -125,8 +122,6 @@ async def download_selected_photos(image_urls: List[str]) -> List[str]:
                                 await f.write(response.content)
                             downloaded_files.append(file_path)
                             break
-                        elif attempt == 2:
-                            print(f"Не удалось скачать {img_url}, статус: {response.status_code}")
                 except Exception as e:
                     if attempt == 2:
                         print(f"Ошибка скачивания {img_url}: {e}")
