@@ -1,14 +1,29 @@
 import os
 import uuid
 import yt_dlp
+import httpx
+import asyncio
 from typing import Dict, Union, Optional
 
 DOWNLOAD_FOLDER = "downloads/videos"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
+async def resolve_short_url(url: str) -> str:
+    """Разрешает короткую ссылку vt.tiktok.com до полной"""
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            response = await client.head(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            return str(response.url)
+    except Exception as e:
+        print(f"Ошибка разрешения короткой ссылки: {e}")
+        return url
+
 def is_video_url(url: str) -> bool:
-    """Проверяет, что ссылка ведёт на видео (не фото)"""
-    return '/video/' in url.lower() and '/photo/' not in url.lower()
+    """Проверяет, что ссылка ведёт на видео"""
+    url_lower = url.lower()
+    return '/video/' in url_lower
 
 def download_video(url: str) -> str:
     """Скачивает видео из TikTok"""
@@ -25,6 +40,8 @@ def download_video(url: str) -> str:
         'extractor_retries': 5,
         'headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
         }
     }
     
@@ -67,5 +84,4 @@ def get_video_info(url: str) -> Dict[str, Union[str, bool]]:
                 'is_video': True
             }
     except:
-        # Если не удалось получить инфо, значит это не видео
         return {'type': 'unknown', 'is_video': False}
