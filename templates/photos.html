@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TikTok Photo Downloader</title>
+    <title>Выбор фото TikTok</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
         
         body {
@@ -25,51 +24,38 @@
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
         }
         
         h1 {
             color: #333;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-size: clamp(22px, 5vw, 28px);
-            font-weight: 700;
-            text-align: center;
         }
         
         .subtitle {
             color: #666;
             margin-bottom: 20px;
-            font-size: clamp(13px, 3.5vw, 15px);
-            text-align: center;
+            font-size: 14px;
         }
         
-        .author-info {
+        .photo-info {
             background: #f5f5f5;
             padding: 15px;
-            border-radius: 16px;
+            border-radius: 12px;
             margin-bottom: 20px;
             font-size: 14px;
-            line-height: 1.5;
-            word-break: break-word;
         }
         
         .photo-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
-            margin: 15px 0;
+            gap: 15px;
+            margin: 20px 0;
         }
         
         @media (max-width: 480px) {
             .photo-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-        }
-        
-        @media (max-width: 320px) {
-            .photo-grid {
-                grid-template-columns: 1fr;
             }
         }
         
@@ -79,9 +65,8 @@
             overflow: hidden;
             cursor: pointer;
             transition: all 0.2s;
-            background: white;
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
+            position: relative;
+            aspect-ratio: 1;
         }
         
         .photo-card.selected {
@@ -90,76 +75,64 @@
             box-shadow: 0 4px 12px rgba(255,0,80,0.2);
         }
         
-        .photo-card:active {
-            transform: scale(0.98);
-        }
-        
         .photo-card img {
             width: 100%;
-            aspect-ratio: 1;
+            height: 100%;
             object-fit: cover;
             display: block;
-            pointer-events: none; /* Чтобы тап по фото не открывал его */
         }
         
         .photo-checkbox {
-            padding: 8px;
-            text-align: center;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
             background: white;
-            border-top: 1px solid #eee;
+            border: 2px solid #ff0050;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ff0050;
+            font-weight: bold;
+            font-size: 18px;
         }
         
-        .photo-checkbox input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #ff0050;
-            transform: scale(1.2);
+        .photo-card.selected .photo-checkbox {
+            background: #ff0050;
+            color: white;
         }
         
         .actions {
             display: flex;
             gap: 10px;
             margin-top: 20px;
-            flex-wrap: wrap;
             position: sticky;
             bottom: 15px;
             background: white;
-            padding: 15px 0 0;
-            z-index: 10;
+            padding: 15px 0;
         }
         
         button {
-            padding: 16px 20px;
+            padding: 15px 25px;
             border: none;
-            border-radius: 16px;
+            border-radius: 12px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            touch-action: manipulation;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
         
         .download-btn {
             background: #ff0050;
             color: white;
             flex: 2;
-            box-shadow: 0 4px 12px rgba(255,0,80,0.3);
-        }
-        
-        .download-btn:active:not(:disabled) {
-            transform: scale(0.98);
-            background: #e00045;
         }
         
         .download-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
-            opacity: 0.6;
-            box-shadow: none;
         }
         
         .back-btn {
@@ -168,19 +141,12 @@
             flex: 1;
         }
         
-        .back-btn:active {
-            transform: scale(0.98);
-            background: #e0e0e0;
-        }
-        
         .select-all {
             margin: 15px 0;
             padding: 12px;
             background: #f5f5f5;
-            border-radius: 12px;
+            border-radius: 8px;
             font-size: 15px;
-            display: flex;
-            align-items: center;
         }
         
         .select-all label {
@@ -188,14 +154,12 @@
             align-items: center;
             gap: 10px;
             cursor: pointer;
-            width: 100%;
         }
         
         .select-all input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             accent-color: #ff0050;
-            margin-right: 8px;
         }
         
         .loading {
@@ -203,14 +167,13 @@
             text-align: center;
             margin-top: 20px;
             padding: 20px;
-            background: rgba(255,255,255,0.9);
-            border-radius: 16px;
+            background: white;
+            border-radius: 12px;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: 200px;
-            z-index: 1000;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
         
@@ -234,33 +197,18 @@
         }
         
         .counter {
-            font-size: 14px;
+            margin-top: 10px;
             color: #666;
-            margin-top: 5px;
-            text-align: center;
-        }
-        
-        /* Для безопасной зоны на iPhone */
-        @supports (padding: max(0px)) {
-            .container {
-                padding-left: max(20px, env(safe-area-inset-left));
-                padding-right: max(20px, env(safe-area-inset-right));
-            }
-            
-            .actions {
-                padding-left: max(15px, env(safe-area-inset-left));
-                padding-right: max(15px, env(safe-area-inset-right));
-                padding-bottom: max(0px, env(safe-area-inset-bottom));
-            }
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📸 Выбери фото</h1>
-        <p class="subtitle">Нажми на фото чтобы выбрать</p>
+        <h1>📸 Выберите фото</h1>
+        <p class="subtitle">Нажмите на фото, чтобы выбрать</p>
         
-        <div class="author-info" id="authorInfo"></div>
+        <div class="photo-info" id="photoInfo">Загрузка...</div>
         
         <div class="select-all">
             <label>
@@ -274,99 +222,99 @@
         
         <div class="actions">
             <button class="back-btn" onclick="window.location.href='/'">← Назад</button>
-            <button class="download-btn" id="downloadBtn" disabled>Скачать (0)</button>
+            <button class="download-btn" id="downloadBtn" disabled>Скачать выбранные (0)</button>
         </div>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Скачиваем...</p>
-        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Скачиваем фото...</p>
     </div>
 
     <script>
         // Получаем данные из sessionStorage
-        const contentInfo = JSON.parse(sessionStorage.getItem('tiktokContent'));
+        const photosData = JSON.parse(sessionStorage.getItem('tiktokPhotos'));
         
-        if (!contentInfo || contentInfo.type !== 'photos') {
+        if (!photosData || !photosData.images || photosData.images.length === 0) {
+            alert('Нет данных о фото. Вернитесь на главную.');
             window.location.href = '/';
         }
         
         // Отображаем информацию
-        document.getElementById('authorInfo').innerHTML = `
-            <strong>Автор:</strong> ${contentInfo.author || 'Неизвестно'}<br>
-            <strong>Название:</strong> ${contentInfo.title || 'Без названия'}<br>
-            <strong>Всего фото:</strong> ${contentInfo.images.length}
+        document.getElementById('photoInfo').innerHTML = `
+            <strong>Автор:</strong> ${photosData.author || 'Unknown'}<br>
+            <strong>Всего фото:</strong> ${photosData.count || photosData.images.length}
         `;
         
-        // Создаем сетку фото
         const photoGrid = document.getElementById('photoGrid');
-        const selectedImages = new Set();
+        const downloadBtn = document.getElementById('downloadBtn');
+        const counter = document.getElementById('counter');
+        const selectedIndices = new Set();
         
-        contentInfo.images.forEach((imgUrl, index) => {
+        // Отображаем все фото
+        photosData.images.forEach((imgUrl, index) => {
             const card = document.createElement('div');
             card.className = 'photo-card';
             card.innerHTML = `
                 <img src="${imgUrl}" alt="Photo ${index + 1}" loading="lazy">
-                <div class="photo-checkbox">
-                    <input type="checkbox" value="${index}" data-url="${imgUrl}" id="photo_${index}">
-                </div>
+                <div class="photo-checkbox" id="check-${index}">✓</div>
             `;
             
-            // Обработка тапа по карточке (для мобильных)
             card.addEventListener('click', (e) => {
-                // Игнорируем, если кликнули прямо по чекбоксу
-                if (e.target.type === 'checkbox') return;
-                
-                const checkbox = card.querySelector('input[type="checkbox"]');
-                checkbox.checked = !checkbox.checked;
-                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                e.preventDefault();
+                toggleSelect(index);
             });
             
             photoGrid.appendChild(card);
         });
         
-        // Обработка выбора
-        const checkboxes = document.querySelectorAll('.photo-card input[type="checkbox"]');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const counter = document.getElementById('counter');
-        
-        function updateSelection() {
-            selectedImages.clear();
-            checkboxes.forEach((cb) => {
-                if (cb.checked) {
-                    selectedImages.add(cb.dataset.url);
-                }
-                // Обновляем класс для визуального выделения
-                cb.closest('.photo-card').classList.toggle('selected', cb.checked);
-            });
-            
-            const count = selectedImages.size;
-            downloadBtn.textContent = `Скачать (${count})`;
-            downloadBtn.disabled = count === 0;
-            counter.textContent = `Выбрано: ${count} из ${contentInfo.images.length}`;
+        function toggleSelect(index) {
+            if (selectedIndices.has(index)) {
+                selectedIndices.delete(index);
+            } else {
+                selectedIndices.add(index);
+            }
+            updateSelection();
         }
         
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateSelection);
-        });
+        function updateSelection() {
+            // Обновляем классы у карточек
+            document.querySelectorAll('.photo-card').forEach((card, idx) => {
+                if (selectedIndices.has(idx)) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            
+            const count = selectedIndices.size;
+            downloadBtn.textContent = `Скачать выбранные (${count})`;
+            downloadBtn.disabled = count === 0;
+            counter.textContent = `Выбрано: ${count} из ${photosData.images.length}`;
+        }
         
         // Выбрать все
         document.getElementById('selectAll').addEventListener('change', (e) => {
-            checkboxes.forEach(cb => {
-                cb.checked = e.target.checked;
-            });
+            if (e.target.checked) {
+                photosData.images.forEach((_, idx) => selectedIndices.add(idx));
+            } else {
+                selectedIndices.clear();
+            }
             updateSelection();
         });
         
-        // Скачивание
+        // Скачивание выбранных фото
         downloadBtn.addEventListener('click', async () => {
             const loading = document.getElementById('loading');
             loading.classList.add('active');
             downloadBtn.disabled = true;
             
             try {
+                // Собираем URL выбранных фото
+                const selectedUrls = Array.from(selectedIndices).map(idx => photosData.images[idx]);
+                
                 const formData = new FormData();
-                Array.from(selectedImages).forEach(url => {
+                selectedUrls.forEach(url => {
                     formData.append('image_urls', url);
                 });
                 
@@ -381,40 +329,22 @@
                     const a = document.createElement('a');
                     a.href = downloadUrl;
                     a.download = 'tiktok_photos.zip';
-                    a.style.display = 'none';
-                    
-                    // Для мобильных устройств
-                    if (navigator.userAgent.match(/Android|iPhone|iPad|iPod/i)) {
-                        a.target = '_blank';
-                    }
-                    
-                    document.body.appendChild(a);
                     a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
                     
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(downloadUrl);
-                    }, 100);
-                    
+                    alert('✅ Фото успешно скачаны!');
                 } else {
                     const data = await response.json();
-                    alert('Ошибка: ' + (data.error || 'Не удалось скачать фото'));
+                    alert('❌ Ошибка: ' + (data.error || 'Не удалось скачать фото'));
                 }
                 
             } catch (err) {
-                alert('Ошибка при скачивании');
+                alert('❌ Ошибка при скачивании');
                 console.error(err);
             } finally {
                 loading.classList.remove('active');
                 downloadBtn.disabled = false;
             }
-        });
-        
-        // Предотвращаем случайное масштабирование при двойном тапе
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-            }, { passive: false });
         });
     </script>
 </body>
