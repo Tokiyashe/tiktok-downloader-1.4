@@ -232,7 +232,6 @@
     </div>
 
     <script>
-        // Получаем данные из sessionStorage
         const photosData = JSON.parse(sessionStorage.getItem('tiktokPhotos'));
         
         if (!photosData || !photosData.images || photosData.images.length === 0) {
@@ -240,7 +239,6 @@
             window.location.href = '/';
         }
         
-        // Отображаем информацию
         document.getElementById('photoInfo').innerHTML = `
             <strong>Автор:</strong> ${photosData.author || 'Unknown'}<br>
             <strong>Всего фото:</strong> ${photosData.count || photosData.images.length}
@@ -251,7 +249,6 @@
         const counter = document.getElementById('counter');
         const selectedIndices = new Set();
         
-        // Отображаем все фото
         photosData.images.forEach((imgUrl, index) => {
             const card = document.createElement('div');
             card.className = 'photo-card';
@@ -278,7 +275,6 @@
         }
         
         function updateSelection() {
-            // Обновляем классы у карточек
             document.querySelectorAll('.photo-card').forEach((card, idx) => {
                 if (selectedIndices.has(idx)) {
                     card.classList.add('selected');
@@ -293,7 +289,6 @@
             counter.textContent = `Выбрано: ${count} из ${photosData.images.length}`;
         }
         
-        // Выбрать все
         document.getElementById('selectAll').addEventListener('change', (e) => {
             if (e.target.checked) {
                 photosData.images.forEach((_, idx) => selectedIndices.add(idx));
@@ -303,14 +298,12 @@
             updateSelection();
         });
         
-        // Скачивание выбранных фото
         downloadBtn.addEventListener('click', async () => {
             const loading = document.getElementById('loading');
             loading.classList.add('active');
             downloadBtn.disabled = true;
             
             try {
-                // Собираем URL выбранных фото
                 const selectedUrls = Array.from(selectedIndices).map(idx => photosData.images[idx]);
                 
                 const formData = new FormData();
