@@ -5,6 +5,7 @@ import httpx
 import aiofiles
 import subprocess
 import json
+import re
 from typing import List, Dict, Union, Optional
 
 PHOTOS_FOLDER = "downloads/photos"
@@ -12,15 +13,16 @@ os.makedirs(PHOTOS_FOLDER, exist_ok=True)
 
 def is_photo_url(url: str) -> bool:
     """Проверяет, что ссылка ведёт на фото/слайд-шоу"""
-    return '/photo/' in url.lower()
+    return '/photo/' in url.lower() or '/photos/' in url.lower()
 
-async def get_photos_from_url(url: str) -> List[str]:
+async def get_photo_urls(url: str) -> List[str]:
     """
-    Получает ссылки на фото через gallery-dl (запускает как subprocess)
-    gallery-dl отлично работает с TikTok фото
+    Получает список URL фото без скачивания
     """
+    photo_urls = []
+    
+    # Способ 1: через gallery-dl (если установлен)
     try:
-        # Запускаем gallery-dl в режиме получения URLs без скачивания
         cmd = [
             'gallery-dl',
             '--get-urls',
@@ -36,69 +38,80 @@ async def get_photos_from_url(url: str) -> List[str]:
         
         stdout, stderr = await process.communicate()
         
-        if process.returncode != 0:
-            print(f"gallery-dl error: {stderr.decode()}")
-            return []
-        
-        # Парсим вывод - каждая строка это URL фото
-        urls = stdout.decode().strip().split('\n')
-        return [u for u in urls if u.startswith('http')]
-        
-    except Exception as e:
-        print(f"Ошибка gallery-dl: {e}")
-        return []
+        if process.returncode == 0:
+            urls = stdout.decode().strip().split('\n')
+            photo_urls = [u for u in urls if u.startswith('http') and any(ext in u.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp'])]
+            if photo_urls:
+                return photo_urls
+    except:
+        pass
+    
+    # Способ 2: парсинг HTML страницы
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            response = await client.get(url)
+            html = response.text
+            
+            # Ищем все возможные URL изображений
+            patterns = [
+                r'https?://[^\s"\']+\.(?:jpg|jpeg|png|webp)[^\s"\']*',
+                r'content="(https?://[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
+                r'src="(https?://[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"',
+                r'data-src="(https?://[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"'
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, html, re.IGNORECASE)
+                photo_urls.extend(matches)
+            
+            # Убираем дубликаты и фильтруем
+            photo_urls = list(set(photo_urls))
+            photo_urls = [u for u in photo_urls if 'avatar' not in u and 'logo' not in u]
+            
+            if photo_urls:
+                return photo_urls[:20]  # максимум 20 фото
+    except:
+        pass
+    
+    return []
 
-async def download_photos_direct(image_urls: List[str]) -> List[str]:
-    """Прямое скачивание фото через HTTP (fallback)"""
-    downloaded = []
+async def download_selected_photos(image_urls: List[str]) -> List[str]:
+    """
+    Скачивает выбранные фото и возвращает пути к файлам
+    """
+    downloaded_files = []
     
     for i, img_url in enumerate(image_urls):
         try:
-            unique_name = f"{uuid.uuid4()}.jpg"
+            # Определяем расширение из URL или ставим .jpg
+            ext_match = re.search(r'\.(jpg|jpeg|png|webp)', img_url.lower())
+            ext = ext_match.group(1) if ext_match else 'jpg'
+            if ext == 'jpeg':
+                ext = 'jpg'
+            
+            unique_name = f"{uuid.uuid4()}.{ext}"
             file_path = os.path.join(PHOTOS_FOLDER, unique_name)
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(img_url, follow_redirects=True)
-                if response.status_code == 200:
-                    async with aiofiles.open(file_path, 'wb') as f:
-                        await f.write(response.content)
-                    downloaded.append(file_path)
+            # Скачиваем с повторными попытками
+            for attempt in range(3):
+                try:
+                    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                        response = await client.get(img_url, headers=headers)
+                        
+                        if response.status_code == 200:
+                            async with aiofiles.open(file_path, 'wb') as f:
+                                await f.write(response.content)
+                            downloaded_files.append(file_path)
+                            break
+                except Exception as e:
+                    if attempt == 2:
+                        print(f"Не удалось скачать {img_url}: {e}")
+                    await asyncio.sleep(1)
                     
         except Exception as e:
-            print(f"Ошибка скачивания фото {i}: {e}")
+            print(f"Ошибка обработки фото {i}: {e}")
     
-    return downloaded
-
-async def download_photos(url: str) -> List[str]:
-    """Основная функция скачивания фото"""
-    # Сначала пробуем через gallery-dl
-    photo_urls = await get_photos_from_url(url)
-    
-    if photo_urls:
-        return await download_photos_direct(photo_urls)
-    
-    # Если gallery-dl не сработал, пробуем альтернативный метод
-    return await download_photos_fallback(url)
-
-async def download_photos_fallback(url: str) -> List[str]:
-    """Запасной метод через анализ страницы"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, follow_redirects=True)
-            html = response.text
-            
-            # Ищем ссылки на изображения в HTML
-            import re
-            img_pattern = r'https?://[^\s"\']+\.(?:jpg|jpeg|png|webp)[^\s"\']*'
-            urls = re.findall(img_pattern, html)
-            
-            # Убираем дубликаты
-            unique_urls = list(set(urls))
-            
-            if unique_urls:
-                return await download_photos_direct(unique_urls[:10])  # максимум 10 фото
-            
-    except Exception as e:
-        print(f"Fallback error: {e}")
-    
-    return []
+    return downloaded_files
