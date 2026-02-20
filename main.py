@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import os
@@ -42,13 +41,13 @@ async def photos_page(request: Request):
 async def analyze_url(url: str = Form(...)):
     """Анализирует ссылку и определяет тип контента"""
     try:
+        # Разрешаем короткую ссылку если нужно
+        if 'vt.tiktok.com' in url:
+            url = await video_downloader.resolve_short_url(url)
+        
         # Проверяем, фото или видео
         if photo_downloader.is_photo_url(url):
-            # Это фото
-            return {
-                'type': 'photos',
-                'redirect': '/photos'
-            }
+            return {'type': 'photos', 'redirect': '/photos'}
         
         # Проверяем видео
         video_info = video_downloader.get_video_info(url)
@@ -75,7 +74,6 @@ async def analyze_photos(url: str = Form(...)):
                 content={"error": "Не найдено фото по этой ссылке"}
             )
         
-        # Возвращаем все фото
         return {
             'type': 'photos',
             'images': photo_urls,
@@ -94,6 +92,10 @@ async def analyze_photos(url: str = Form(...)):
 async def download_video(url: str = Form(...)):
     """Скачивает видео"""
     try:
+        # Разрешаем короткую ссылку если нужно
+        if 'vt.tiktok.com' in url:
+            url = await video_downloader.resolve_short_url(url)
+        
         file_path = await asyncio.to_thread(video_downloader.download_video, url)
         
         if not os.path.exists(file_path):
@@ -118,7 +120,6 @@ async def download_video(url: str = Form(...)):
 async def download_photos(image_urls: List[str] = Form(...)):
     """Скачивает выбранные фото и отдаёт ZIP-архивом"""
     try:
-        # Скачиваем выбранные фото
         photo_paths = await photo_downloader.download_selected_photos(image_urls)
         
         if not photo_paths:
@@ -127,7 +128,6 @@ async def download_photos(image_urls: List[str] = Form(...)):
                 content={"error": "Не удалось скачать фото"}
             )
         
-        # Создаём ZIP
         zip_filename = f"tiktok_photos_{uuid.uuid4()}.zip"
         zip_path = os.path.join("downloads/photos", zip_filename)
         
@@ -149,7 +149,6 @@ async def download_photos(image_urls: List[str] = Form(...)):
 
 @app.on_event("startup")
 async def startup():
-    # Очистка старых файлов
     for folder in ["downloads/videos", "downloads/photos"]:
         if os.path.exists(folder):
             for filename in os.listdir(folder):
