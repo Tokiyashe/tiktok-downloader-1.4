@@ -11,14 +11,31 @@ from typing import List, Dict, Union, Optional
 PHOTOS_FOLDER = "downloads/photos"
 os.makedirs(PHOTOS_FOLDER, exist_ok=True)
 
+async def resolve_short_url(url: str) -> str:
+    """Разрешает короткую ссылку vt.tiktok.com до полной"""
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            response = await client.head(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            return str(response.url)
+    except Exception as e:
+        print(f"Ошибка разрешения короткой ссылки: {e}")
+        return url
+
 def is_photo_url(url: str) -> bool:
     """Проверяет, что ссылка ведёт на фото/слайд-шоу"""
-    return '/photo/' in url.lower() or '/photos/' in url.lower()
+    url_lower = url.lower()
+    return '/photo/' in url_lower or '/photos/' in url_lower
 
 async def get_photo_urls(url: str) -> List[str]:
     """
     Получает список URL фото без скачивания
     """
+    # Сначала разрешаем короткую ссылку если нужно
+    if 'vt.tiktok.com' in url:
+        url = await resolve_short_url(url)
+    
     photo_urls = []
     
     # Способ 1: через gallery-dl (если установлен)
@@ -48,8 +65,10 @@ async def get_photo_urls(url: str) -> List[str]:
     
     # Способ 2: парсинг HTML страницы
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
-            response = await client.get(url)
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            response = await client.get(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
             html = response.text
             
             # Ищем все возможные URL изображений
@@ -70,8 +89,8 @@ async def get_photo_urls(url: str) -> List[str]:
             
             if photo_urls:
                 return photo_urls[:20]  # максимум 20 фото
-    except:
-        pass
+    except Exception as e:
+        print(f"Ошибка парсинга HTML: {e}")
     
     return []
 
@@ -106,9 +125,11 @@ async def download_selected_photos(image_urls: List[str]) -> List[str]:
                                 await f.write(response.content)
                             downloaded_files.append(file_path)
                             break
+                        elif attempt == 2:
+                            print(f"Не удалось скачать {img_url}, статус: {response.status_code}")
                 except Exception as e:
                     if attempt == 2:
-                        print(f"Не удалось скачать {img_url}: {e}")
+                        print(f"Ошибка скачивания {img_url}: {e}")
                     await asyncio.sleep(1)
                     
         except Exception as e:
