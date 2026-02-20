@@ -177,6 +177,20 @@
             display: block;
         }
         
+        .info-message {
+            background: #e8f5e8;
+            color: #4caf50;
+            margin-top: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .info-message.active {
+            display: block;
+        }
+        
         .example-link {
             color: #ff0050;
             text-decoration: none;
@@ -199,31 +213,31 @@
         <!-- Вкладка Видео -->
         <div id="videoTab" class="tab-content active">
             <div class="tab-description">
-                Вставь ссылку на видео TikTok
+                Вставь ссылку на видео TikTok (обычную или короткую vt.tiktok.com)
             </div>
             <div class="input-group">
                 <input type="url" 
                        id="videoUrlInput" 
-                       placeholder="https://www.tiktok.com/@user/video/..." 
+                       placeholder="https://vt.tiktok.com/... или /video/..." 
                        autocomplete="off">
             </div>
             <button id="videoDownloadBtn" onclick="downloadVideo()">Скачать видео</button>
-            <a href="#" class="example-link" onclick="setExampleVideo(event)">📋 Пример ссылки на видео</a>
+            <a href="#" class="example-link" onclick="setExampleVideo(event)">📋 Пример короткой ссылки</a>
         </div>
         
         <!-- Вкладка Фото -->
         <div id="photoTab" class="tab-content">
             <div class="tab-description">
-                Вставь ссылку на фото или слайд-шоу TikTok
+                Вставь ссылку на фото TikTok (обычную или короткую vt.tiktok.com)
             </div>
             <div class="input-group">
                 <input type="url" 
                        id="photoUrlInput" 
-                       placeholder="https://www.tiktok.com/@user/photo/..." 
+                       placeholder="https://vt.tiktok.com/... или /photo/..." 
                        autocomplete="off">
             </div>
             <button id="photoDownloadBtn" onclick="analyzePhotos()">Получить фото</button>
-            <a href="#" class="example-link" onclick="setExamplePhoto(event)">📋 Пример ссылки на фото</a>
+            <a href="#" class="example-link" onclick="setExamplePhoto(event)">📋 Пример короткой ссылки</a>
         </div>
         
         <div class="loading" id="loading">
@@ -232,6 +246,7 @@
         </div>
         
         <div class="error" id="error"></div>
+        <div class="info-message" id="infoMessage"></div>
     </div>
 
     <script>
@@ -251,12 +266,12 @@
         
         function setExampleVideo(e) {
             e.preventDefault();
-            document.getElementById('videoUrlInput').value = 'https://www.tiktok.com/@therock/video/7123456789012345678';
+            document.getElementById('videoUrlInput').value = 'https://vt.tiktok.com/ZSm5vrd7E/';
         }
         
         function setExamplePhoto(e) {
             e.preventDefault();
-            document.getElementById('photoUrlInput').value = 'https://www.tiktok.com/@user/photo/7123456789012345678';
+            document.getElementById('photoUrlInput').value = 'https://vt.tiktok.com/ZSm5vrd7E/';
         }
         
         async function downloadVideo() {
@@ -267,8 +282,8 @@
                 return;
             }
             
-            if (!url.includes('tiktok.com') || !url.includes('/video/')) {
-                showError('Это не похоже на ссылку на видео TikTok');
+            if (!url.includes('tiktok.com')) {
+                showError('Это не похоже на ссылку TikTok');
                 return;
             }
             
@@ -283,8 +298,8 @@
                 return;
             }
             
-            if (!url.includes('tiktok.com') || !url.includes('/photo/')) {
-                showError('Это не похоже на ссылку на фото TikTok');
+            if (!url.includes('tiktok.com')) {
+                showError('Это не похоже на ссылку TikTok');
                 return;
             }
             
@@ -319,6 +334,7 @@
                 
             } catch (err) {
                 showError('Ошибка при анализе ссылки');
+                console.error(err);
             } finally {
                 loading.classList.remove('active');
                 downloadBtn.disabled = false;
@@ -354,7 +370,7 @@
                     a.click();
                     window.URL.revokeObjectURL(downloadUrl);
                     
-                    showSuccess('✅ Видео скачано!');
+                    showInfo('✅ Видео успешно скачано!');
                 } else {
                     const data = await response.json();
                     showError(data.error || 'Ошибка скачивания');
@@ -362,6 +378,7 @@
                 
             } catch (err) {
                 showError('Ошибка при скачивании');
+                console.error(err);
             } finally {
                 loading.classList.remove('active');
                 downloadBtn.disabled = false;
@@ -378,22 +395,19 @@
             }, 5000);
         }
         
-        function showSuccess(message) {
-            const error = document.getElementById('error');
-            error.textContent = message;
-            error.style.color = '#4caf50';
-            error.style.background = '#e8f5e8';
-            error.classList.add('active');
+        function showInfo(message) {
+            const info = document.getElementById('infoMessage');
+            info.textContent = message;
+            info.classList.add('active');
             
             setTimeout(() => {
-                error.classList.remove('active');
-                error.style.color = '#d32f2f';
-                error.style.background = '#ffebee';
+                info.classList.remove('active');
             }, 3000);
         }
         
         function hideError() {
             document.getElementById('error').classList.remove('active');
+            document.getElementById('infoMessage').classList.remove('active');
         }
         
         // Enter для отправки
