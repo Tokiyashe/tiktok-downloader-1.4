@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>TikTok Photo Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #00f2fe 0%, #ff0050 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: clamp(22px, 5vw, 28px);
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: clamp(13px, 3.5vw, 15px);
+            text-align: center;
+        }
+        
+        .author-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 480px) {
+            .photo-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+        }
+        
+        @media (max-width: 320px) {
+            .photo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .photo-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+        
+        .photo-card.selected {
+            border-color: #ff0050;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(255,0,80,0.2);
+        }
+        
+        .photo-card:active {
+            transform: scale(0.98);
+        }
+        
+        .photo-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+            pointer-events: none; /* Чтобы тап по фото не открывал его */
+        }
+        
+        .photo-checkbox {
+            padding: 8px;
+            text-align: center;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+        
+        .photo-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #ff0050;
+            transform: scale(1.2);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            position: sticky;
+            bottom: 15px;
+            background: white;
+            padding: 15px 0 0;
+            z-index: 10;
+        }
+        
+        button {
+            padding: 16px 20px;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .download-btn {
+            background: #ff0050;
+            color: white;
+            flex: 2;
+            box-shadow: 0 4px 12px rgba(255,0,80,0.3);
+        }
+        
+        .download-btn:active:not(:disabled) {
+            transform: scale(0.98);
+            background: #e00045;
+        }
+        
+        .download-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+        
+        .back-btn {
+            background: #f0f0f0;
+            color: #333;
+            flex: 1;
+        }
+        
+        .back-btn:active {
+            transform: scale(0.98);
+            background: #e0e0e0;
+        }
+        
+        .select-all {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .select-all label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .select-all input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #ff0050;
+            margin-right: 8px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 16px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff0050;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .counter {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
+        }
+        
+        /* Для безопасной зоны на iPhone */
+        @supports (padding: max(0px)) {
+            .container {
+                padding-left: max(20px, env(safe-area-inset-left));
+                padding-right: max(20px, env(safe-area-inset-right));
+            }
+            
+            .actions {
+                padding-left: max(15px, env(safe-area-inset-left));
+                padding-right: max(15px, env(safe-area-inset-right));
+                padding-bottom: max(0px, env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Выбери фото</h1>
+        <p class="subtitle">Нажми на фото чтобы выбрать</p>
+        
+        <div class="author-info" id="authorInfo"></div>
+        
+        <div class="select-all">
+            <label>
+                <input type="checkbox" id="selectAll"> Выбрать все фото
+            </label>
+        </div>
+        
+        <div class="photo-grid" id="photoGrid"></div>
+        
+        <div class="counter" id="counter">Выбрано: 0</div>
+        
+        <div class="actions">
+            <button class="back-btn" onclick="window.location.href='/'">← Назад</button>
+            <button class="download-btn" id="downloadBtn" disabled>Скачать (0)</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Скачиваем...</p>
+        </div>
+    </div>
+
+    <script>
+        // Получаем данные из sessionStorage
+        const contentInfo = JSON.parse(sessionStorage.getItem('tiktokContent'));
+        
+        if (!contentInfo || contentInfo.type !== 'photos') {
+            window.location.href = '/';
+        }
+        
+        // Отображаем информацию
+        document.getElementById('authorInfo').innerHTML = `
+            <strong>Автор:</strong> ${contentInfo.author || 'Неизвестно'}<br>
+            <strong>Название:</strong> ${contentInfo.title || 'Без названия'}<br>
+            <strong>Всего фото:</strong> ${contentInfo.images.length}
+        `;
+        
+        // Создаем сетку фото
+        const photoGrid = document.getElementById('photoGrid');
+        const selectedImages = new Set();
+        
+        contentInfo.images.forEach((imgUrl, index) => {
+            const card = document.createElement('div');
+            card.className = 'photo-card';
+            card.innerHTML = `
+                <img src="${imgUrl}" alt="Photo ${index + 1}" loading="lazy">
+                <div class="photo-checkbox">
+                    <input type="checkbox" value="${index}" data-url="${imgUrl}" id="photo_${index}">
+                </div>
+            `;
+            
+            // Обработка тапа по карточке (для мобильных)
+            card.addEventListener('click', (e) => {
+                // Игнорируем, если кликнули прямо по чекбоксу
+                if (e.target.type === 'checkbox') return;
+                
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            
+            photoGrid.appendChild(card);
+        });
+        
+        // Обработка выбора
+        const checkboxes = document.querySelectorAll('.photo-card input[type="checkbox"]');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const counter = document.getElementById('counter');
+        
+        function updateSelection() {
+            selectedImages.clear();
+            checkboxes.forEach((cb) => {
+                if (cb.checked) {
+                    selectedImages.add(cb.dataset.url);
+                }
+                // Обновляем класс для визуального выделения
+                cb.closest('.photo-card').classList.toggle('selected', cb.checked);
+            });
+            
+            const count = selectedImages.size;
+            downloadBtn.textContent = `Скачать (${count})`;
+            downloadBtn.disabled = count === 0;
+            counter.textContent = `Выбрано: ${count} из ${contentInfo.images.length}`;
+        }
+        
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateSelection);
+        });
+        
+        // Выбрать все
+        document.getElementById('selectAll').addEventListener('change', (e) => {
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateSelection();
+        });
+        
+        // Скачивание
+        downloadBtn.addEventListener('click', async () => {
+            const loading = document.getElementById('loading');
+            loading.classList.add('active');
+            downloadBtn.disabled = true;
+            
+            try {
+                const formData = new FormData();
+                Array.from(selectedImages).forEach(url => {
+                    formData.append('image_urls', url);
+                });
+                
+                const response = await fetch('/download/photos', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'tiktok_photos.zip';
+                    a.style.display = 'none';
+                    
+                    // Для мобильных устройств
+                    if (navigator.userAgent.match(/Android|iPhone|iPad|iPod/i)) {
+                        a.target = '_blank';
+                    }
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(downloadUrl);
+                    }, 100);
+                    
+                } else {
+                    const data = await response.json();
+                    alert('Ошибка: ' + (data.error || 'Не удалось скачать фото'));
+                }
+                
+            } catch (err) {
+                alert('Ошибка при скачивании');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+                downloadBtn.disabled = false;
+            }
+        });
+        
+        // Предотвращаем случайное масштабирование при двойном тапе
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        });
+    </script>
+</body>
+</html>
